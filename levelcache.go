@@ -19,46 +19,46 @@ func NewCache(cacheDir string, janitorInterval time.Duration) (*Cache, error) {
 		return nil, err
 	}
 
-	this := &Cache{
+	c := &Cache{
 		db: db,
 
 		jstopCh: make(chan bool),
 	}
 
-	go this.runJanitor(janitorInterval)
+	go c.runJanitor(janitorInterval)
 
-	return this, nil
+	return c, nil
 }
 
-func (this *Cache) Free() {
-	this.db.Close()
-	close(this.jstopCh)
+func (c *Cache) Free() {
+	c.db.Close()
+	close(c.jstopCh)
 
-	this.jstopCh <- true
+	c.jstopCh <- true
 }
 
-func (this *Cache) runJanitor(jinterval time.Duration) {
+func (c *Cache) runJanitor(jinterval time.Duration) {
 	ticker := time.NewTicker(jinterval)
 
 	for {
 		select {
-		case <-this.jstopCh:
+		case <-c.jstopCh:
 			return
 		case <-ticker.C:
 			now := time.Now().Unix()
-			iter := this.db.NewIterator(nil, nil)
+			iter := c.db.NewIterator(nil, nil)
 			for iter.Next() {
 				key := iter.Key()
 				cv, err := parseByBinary(iter.Value())
 				if err != nil {
-					this.Delete(key)
+					c.Delete(key)
 					continue
 				}
 				if cv.Expire == 0 {
 					continue
 				}
 				if now-cv.AddTime > cv.Expire {
-					this.Delete(key)
+					c.Delete(key)
 				}
 			}
 			iter.Release()
@@ -66,7 +66,7 @@ func (this *Cache) runJanitor(jinterval time.Duration) {
 	}
 }
 
-func (this *Cache) Set(key, value []byte, expireSeconds int64) error {
+func (c *Cache) Set(key, value []byte, expireSeconds int64) error {
 	cb := &CacheBin{
 		AddTime: time.Now().Unix(),
 		Expire:  expireSeconds,
@@ -83,11 +83,11 @@ func (this *Cache) Set(key, value []byte, expireSeconds int64) error {
 		return err
 	}
 
-	return this.db.Put(key, bv, nil)
+	return c.db.Put(key, bv, nil)
 }
 
-func (this *Cache) Get(key []byte) ([]byte, error) {
-	bv, err := this.db.Get(key, nil)
+func (c *Cache) Get(key []byte) ([]byte, error) {
+	bv, err := c.db.Get(key, nil)
 	if err != nil {
 		if err == errors.ErrNotFound {
 			return nil, nil
@@ -102,7 +102,7 @@ func (this *Cache) Get(key []byte) ([]byte, error) {
 
 	if cv.Expire != 0 {
 		if time.Now().Unix()-cv.AddTime > cv.Expire {
-			this.Delete(key)
+			c.Delete(key)
 			return nil, nil
 		}
 	}
@@ -110,6 +110,6 @@ func (this *Cache) Get(key []byte) ([]byte, error) {
 	return cv.Value, nil
 }
 
-func (this *Cache) Delete(key []byte) error {
-	return this.db.Delete(key, nil)
+func (c *Cache) Delete(key []byte) error {
+	return c.db.Delete(key, nil)
 }

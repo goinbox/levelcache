@@ -37,14 +37,14 @@ func parseByBinary(bs []byte) (*CacheValue, error) {
 	return cv, nil
 }
 
-func (this *CacheValue) toBinary() ([]byte, error) {
+func (c *CacheValue) toBinary() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, this.CacheBin)
+	err := binary.Write(buf, binary.LittleEndian, c.CacheBin)
 	if err != nil {
 		return nil, err
 	}
 
-	buf.Write(this.Value)
+	buf.Write(c.Value)
 
 	return buf.Bytes(), nil
 }
