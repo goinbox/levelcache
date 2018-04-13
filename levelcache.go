@@ -32,9 +32,9 @@ func NewCache(cacheDir string, janitorInterval time.Duration) (*Cache, error) {
 
 func (c *Cache) Free() {
 	c.db.Close()
-	close(c.jstopCh)
 
 	c.jstopCh <- true
+	close(c.jstopCh)
 }
 
 func (c *Cache) runJanitor(jinterval time.Duration) {
